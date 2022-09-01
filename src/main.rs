@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection};
 
 const BLOCK_SIZE: Vec2 = const_vec2!([100f32, 40f32]);
 const PLAYER_SIZE: Vec2 = const_vec2!([150f32, 40f32]);
