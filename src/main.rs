@@ -1,4 +1,5 @@
 use macroquad::prelude::*;
+use rusqlite::{Connection, Result};
 
 const BLOCK_SIZE: Vec2 = const_vec2!([100f32, 40f32]);
 const PLAYER_SIZE: Vec2 = const_vec2!([150f32, 40f32]);
@@ -20,7 +21,7 @@ pub fn draw_title_text(text: &str, font: Font) {
         },
     );
 }
-
+#[derive(Debug, PartialEq, Eq)]
 pub enum GameState {
     Menu,
     Game,
@@ -195,8 +196,29 @@ fn init_blocks(blocks: &mut Vec<Block>) {
     }
 }
 
+fn initalize_database() {
+    //Interface with sqlite
+    let conn = Connection::open("gamestate.db").unwrap();
+    conn.execute(
+        "create table if not exists gamestate (
+            id integer primary key,
+            score integer
+        )",
+        ([]),
+    ).unwrap();
+}
+
+fn input_database(score: i32) {
+    let conn = Connection::open("gamestate.db").unwrap();
+    conn.execute(
+        "INSERT INTO gamestate (score) values (?1)",
+        ([score]),
+    ).unwrap();
+}
+
 #[macroquad::main("breakout")]
 async fn main() {
+    initalize_database();
     let font = load_ttf_font("res/Heebo-VariableFont_wght.ttf")
         .await
         .unwrap();
@@ -213,6 +235,7 @@ async fn main() {
 
     init_blocks(&mut blocks);
     loop {
+        // print!("{:?}", score);
         match game_state {
             GameState::Menu => {
                 if is_key_pressed(KeyCode::Space) {
@@ -256,11 +279,13 @@ async fn main() {
                     ));
                     if player_lives <= 0 {
                         game_state = GameState::Dead;
+                        input_database(score);
                     }
                 }
                 blocks.retain(|block| block.lives > 0);
                 if blocks.is_empty() {
                     game_state = GameState::LevelCompleted;
+                    input_database(score);
                 }
             }
             GameState::LevelCompleted | GameState::Dead => {
@@ -277,7 +302,7 @@ async fn main() {
             }
         }
 
-        clear_background(WHITE);
+        clear_background(GRAY);
         player.draw();
         for block in blocks.iter() {
             block.draw();
@@ -318,13 +343,12 @@ async fn main() {
                 );
             }
             GameState::LevelCompleted => {
-                draw_title_text(&format!("you win! {} score", score), font);
+                draw_title_text(&format!("you WIN! {} score", score), font);
             }
             GameState::Dead => {
                 draw_title_text(&format!("you DIED! {} score", score), font);
             }
         }
-
         next_frame().await
     }
 }
